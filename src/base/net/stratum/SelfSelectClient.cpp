@@ -31,9 +31,11 @@
 #include "base/io/json/Json.h"
 #include "base/io/json/JsonRequest.h"
 #include "base/io/log/Log.h"
+#include "base/io/log/Tags.h"
 #include "base/net/http/Fetch.h"
 #include "base/net/http/HttpData.h"
 #include "base/net/stratum/Client.h"
+#include "net/JobResult.h"
 
 
 namespace xmrig {
@@ -58,7 +60,7 @@ xmrig::SelfSelectClient::SelfSelectClient(int id, const char *agent, IClientList
     m_listener(listener)
 {
     m_httpListener  = std::make_shared<HttpListener>(this);
-    m_client        = new Client(id, agent, this);
+    m_client = new Client(id, agent, this);
 }
 
 
@@ -201,6 +203,8 @@ void xmrig::SelfSelectClient::submitBlockTemplate(rapidjson::Value &result)
     Document doc(kObjectType);
     auto &allocator = doc.GetAllocator();
 
+    m_blocktemplate = Json::getString(result,kBlocktemplateBlob);
+
     Value params(kObjectType);
     params.AddMember(StringRef(kId),            m_job.clientId().toJSON(), allocator);
     params.AddMember(StringRef(kJobId),         m_job.id().toJSON(), allocator);
@@ -235,6 +239,33 @@ void xmrig::SelfSelectClient::submitBlockTemplate(rapidjson::Value &result)
     });
 }
 
+int64_t xmrig::SelfSelectClient::submit(const JobResult& result)
+{
+    this->submit_origin_daemon(result);
+    return m_client->submit(result);
+}
+
+void xmrig::SelfSelectClient::submit_origin_daemon(const JobResult& result)
+{
+    LOG_INFO("%s" GREEN_BOLD(" SelfSelectClient") BLACK_BOLD(" Submitting to origin"), Tags::proxy());
+
+    if (result.diff == 0) {
+        return;
+    }
+    char *data = m_blocktemplate.data();
+
+    Buffer::toHex(reinterpret_cast<const uint8_t *>(&result.nonce), 4, data + 78);
+
+    using namespace rapidjson;
+    Document doc(kObjectType);
+    Value params(kArrayType);
+    params.PushBack(m_blocktemplate.toJSON(), doc.GetAllocator());
+
+    JsonRequest::create(doc, m_sequence, "submitblock", params);
+
+    FetchRequest req(HTTP_POST, pool().daemon().host(), pool().daemon().port(), "/json_rpc", doc, pool().daemon().isTLS(), isQuiet());
+    fetch(std::move(req), m_httpListener);
+}
 
 void xmrig::SelfSelectClient::onHttpData(const HttpData &data)
 {
