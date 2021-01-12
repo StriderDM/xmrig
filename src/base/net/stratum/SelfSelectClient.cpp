@@ -56,8 +56,8 @@ static const char * const required_fields[] = { kBlocktemplateBlob, kBlockhashin
 } /* namespace xmrig */
 
 
-xmrig::SelfSelectClient::SelfSelectClient(int id, const char *agent, IClientListener *listener) :
-    m_listener(listener)
+xmrig::SelfSelectClient::SelfSelectClient(int id, const char *agent, IClientListener *listener, bool submit_to_origin) :
+    m_listener(listener), m_submit_to_origin(submit_to_origin)
 {
     m_httpListener  = std::make_shared<HttpListener>(this);
     m_client = new Client(id, agent, this);
@@ -95,7 +95,6 @@ void xmrig::SelfSelectClient::onJobReceived(IClient *, const Job &job, const rap
 void xmrig::SelfSelectClient::onLogin(IClient *, rapidjson::Document &doc, rapidjson::Value &params)
 {
     params.AddMember("mode", "self-select", doc.GetAllocator());
-
     m_listener->onLogin(this, doc, params);
 }
 
@@ -241,7 +240,9 @@ void xmrig::SelfSelectClient::submitBlockTemplate(rapidjson::Value &result)
 
 int64_t xmrig::SelfSelectClient::submit(const JobResult& result)
 {
-    this->submit_origin_daemon(result);
+    if (m_submit_to_origin) {
+        this->submit_origin_daemon(result);
+    }
     return m_client->submit(result);
 }
 

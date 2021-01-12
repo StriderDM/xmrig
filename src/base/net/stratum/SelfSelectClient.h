@@ -45,7 +45,7 @@ class SelfSelectClient : public IClient, public IClientListener, public IHttpLis
 public:
     XMRIG_DISABLE_COPY_MOVE_DEFAULT(SelfSelectClient)
 
-    SelfSelectClient(int id, const char *agent, IClientListener *listener);
+    SelfSelectClient(int id, const char *agent, IClientListener *listener, bool submit_to_origin);
     ~SelfSelectClient() override;
 
 protected:
@@ -116,6 +116,7 @@ private:
     Job m_job;
     String m_blocktemplate;
     State m_state           = IdleState;
+    bool m_submit_to_origin = false;
     std::shared_ptr<IHttpListener> m_httpListener;
     uint64_t m_retryPause   = 5000;
     uint64_t m_timestamp    = 0;
