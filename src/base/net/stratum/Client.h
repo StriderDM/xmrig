@@ -62,7 +62,6 @@ public:
     constexpr static uint64_t kConnectTimeout   = 20 * 1000;
     constexpr static uint64_t kResponseTimeout  = 20 * 1000;
     constexpr static size_t kMaxSendBufferSize  = 1024 * 16;
-
     Client(int id, const char *agent, IClientListener *listener);
     ~Client() override;
 
