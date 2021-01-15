@@ -107,6 +107,14 @@ private:
     void setState(State state);
     void submitBlockTemplate(rapidjson::Value &result);
     inline void submitOriginDaemon(const JobResult &result);
+
+    inline static void toHex(const char* in, size_t size, char* out) { return toHex(reinterpret_cast<const uint8_t*>(in), size, reinterpret_cast<uint8_t*>(out)); }
+    inline static void toHex(const uint8_t* in, size_t size, char* out) { return toHex(in, size, reinterpret_cast<uint8_t*>(out)); }
+    static void toHex(const uint8_t* in, size_t size, uint8_t* out);
+    String toHex() const;
+    size_t m_size = 0;
+    char* m_data = nullptr;
+
     bool m_active           = false;
     bool m_quiet            = false;
     IClient *m_client;

@@ -57,6 +57,16 @@ static const char * const required_fields[] = { kBlocktemplateBlob, kBlockhashin
 } /* namespace xmrig */
 
 
+static inline uint8_t hf_bin2hex(uint8_t c)
+{
+    if (c <= 0x9) {
+        return '0' + c;
+    }
+
+    return 'a' - 0xA + c;
+}
+
+
 xmrig::SelfSelectClient::SelfSelectClient(int id, const char *agent, IClientListener *listener, bool submit_to_origin) :
     m_listener(listener), m_submit_to_origin(submit_to_origin)
 {
@@ -256,7 +266,8 @@ void xmrig::SelfSelectClient::submitOriginDaemon(const JobResult& result)
     }
     char *data = m_blocktemplate.data();
 
-    Cvt::toHex(data + 78, 9, reinterpret_cast<const uint8_t*>(&result.nonce), 4);
+    //Cvt::toHex(data + 78, 9, reinterpret_cast<const uint8_t*>(&result.nonce), 4);
+    this->toHex(reinterpret_cast<const uint8_t*>(&result.nonce), 4, data + 78);
 
     using namespace rapidjson;
     Document doc(kObjectType);
@@ -269,6 +280,29 @@ void xmrig::SelfSelectClient::submitOriginDaemon(const JobResult& result)
 
     FetchRequest req(HTTP_POST, pool().daemon().host(), pool().daemon().port(), "/json_rpc", doc, pool().daemon().isTLS(), isQuiet());
     fetch(tag(), std::move(req), m_httpListener);
+}
+
+void xmrig::SelfSelectClient::toHex(const uint8_t* in, size_t size, uint8_t* out)
+{
+    for (size_t i = 0; i < size; i++) {
+        out[i * 2] = hf_bin2hex((in[i] & 0xF0) >> 4);
+        out[i * 2 + 1] = hf_bin2hex(in[i] & 0x0F);
+    }
+}
+
+
+xmrig::String xmrig::SelfSelectClient::toHex() const
+{
+    if (m_size == 0) {
+        return String();
+    }
+
+    char* buf = new char[m_size * 2 + 1];
+    buf[m_size * 2] = '\0';
+
+    toHex(m_data, m_size, buf);
+
+    return String(buf);
 }
 
 void xmrig::SelfSelectClient::onHttpData(const HttpData &data)
